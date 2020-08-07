@@ -1,3 +1,4 @@
+# -*-coding:utf-8 -*-
 import os
 import argparse
 
@@ -61,6 +62,7 @@ def train(model, iterator, optimizer, criterion):
 
 
 if __name__ == "__main__":
+    # 参数设定
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", type=int, default=24)
     parser.add_argument("--lr", type=float, default=0.00002)
@@ -70,12 +72,13 @@ if __name__ == "__main__":
     parser.add_argument("--devset", type=str, default="data/dev.json")
     parser.add_argument("--testset", type=str, default="data/test.json")
 
-    parser.add_argument("--telegram_bot_token", type=str, default="")
-    parser.add_argument("--telegram_chat_id", type=str, default="")
+    parser.add_argument("--telegram_bot_token", type=str, default="")# ?
+    parser.add_argument("--telegram_chat_id", type=str, default="")# ?
 
     hp = parser.parse_args()
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+    # entity和posttag的作用?
     model = Net(
         device=device,
         trigger_size=len(all_triggers),
@@ -86,14 +89,25 @@ if __name__ == "__main__":
     if device == 'cuda':
         model = model.cuda()
 
-    model = nn.DataParallel(model)
+    model = nn.DataParallel(model) # ?
 
     train_dataset = ACE2005Dataset(hp.trainset)
-    dev_dataset = ACE2005Dataset(hp.devset)
-    test_dataset = ACE2005Dataset(hp.testset)
+    # dev_dataset = ACE2005Dataset(hp.devset)
+    # test_dataset = ACE2005Dataset(hp.testset)
+    tokens_x, entities_x, postags_x, triggers_y, arguments, seqlen, head_indexes, words, triggers = train_dataset[0]
+    print(train_dataset[0])
+    print("tokens: ,", tokens_x)
+    print("entities_x: ,", entities_x)
+    print("postags_x: ,",postags_x)
+    print("triggers_y:, ", triggers_y)
+    print("arguments: ,", arguments)
+    print("seqlen: ", seqlen)
+    print("head_indexes: ,",head_indexes)
+    print("words: ,", words)
+    print("triggers: ,", triggers)
 
     samples_weight = train_dataset.get_samples_weight()
-    sampler = torch.utils.data.WeightedRandomSampler(samples_weight, len(samples_weight))
+    sampler = torch.utils.data.WeightedRandomSampler(samples_weight, len(samples_weight))# 加权采样
 
     train_iter = data.DataLoader(dataset=train_dataset,
                                  batch_size=hp.batch_size,
@@ -101,38 +115,52 @@ if __name__ == "__main__":
                                  sampler=sampler,
                                  num_workers=4,
                                  collate_fn=pad)
-    dev_iter = data.DataLoader(dataset=dev_dataset,
-                               batch_size=hp.batch_size,
-                               shuffle=False,
-                               num_workers=4,
-                               collate_fn=pad)
-    test_iter = data.DataLoader(dataset=test_dataset,
-                                batch_size=hp.batch_size,
-                                shuffle=False,
-                                num_workers=4,
-                                collate_fn=pad)
+    # dev_iter = data.DataLoader(dataset=dev_dataset,
+    #                            batch_size=hp.batch_size,
+    #                            shuffle=False,
+    #                            num_workers=4,
+    #                            collate_fn=pad)
+    # test_iter = data.DataLoader(dataset=test_dataset,
+    #                             batch_size=hp.batch_size,
+    #                             shuffle=False,
+    #                             num_workers=4,
+    #                             collate_fn=pad)
 
-    optimizer = optim.Adam(model.parameters(), lr=hp.lr)
-    # optimizer = optim.Adadelta(model.parameters(), lr=1.0, weight_decay=1e-2)
+    for data in train_iter:
+        print(data)
+        tokens_x, entities_x, postags_x, triggers_y, arguments, seqlen, head_indexes, words, triggers = data
+        print("tokens: ,", tokens_x)
+        print("entities_x: ,", entities_x)
+        print("postags_x: ,", postags_x)
+        print("triggers_y:, ", triggers_y)
+        print("arguments: ,", arguments)
+        print("seqlen: ", seqlen)
+        print("head_indexes: ,", head_indexes)
+        print("words: ,", words)
+        print("triggers: ,", triggers)
 
-    criterion = nn.CrossEntropyLoss(ignore_index=0)
 
-    if not os.path.exists(hp.logdir):
-        os.makedirs(hp.logdir)
-
-    for epoch in range(1, hp.n_epochs + 1):
-        train(model, train_iter, optimizer, criterion)
-
-        fname = os.path.join(hp.logdir, str(epoch))
-        print(f"=========eval dev at epoch={epoch}=========")
-        metric_dev = eval(model, dev_iter, fname + '_dev')
-
-        print(f"=========eval test at epoch={epoch}=========")
-        metric_test = eval(model, test_iter, fname + '_test')
-
-        if hp.telegram_bot_token:
-            report_to_telegram('[epoch {}] dev\n{}'.format(epoch, metric_dev), hp.telegram_bot_token, hp.telegram_chat_id)
-            report_to_telegram('[epoch {}] test\n{}'.format(epoch, metric_test), hp.telegram_bot_token, hp.telegram_chat_id)
-
-        torch.save(model, "latest_model.pt")
-        # print(f"weights were saved to {fname}.pt")
+    # optimizer = optim.Adam(model.parameters(), lr=hp.lr)
+    # # optimizer = optim.Adadelta(model.parameters(), lr=1.0, weight_decay=1e-2)
+    #
+    # criterion = nn.CrossEntropyLoss(ignore_index=0)
+    #
+    # if not os.path.exists(hp.logdir):
+    #     os.makedirs(hp.logdir)
+    #
+    # for epoch in range(1, hp.n_epochs + 1):
+    #     train(model, train_iter, optimizer, criterion)
+    #
+    #     fname = os.path.join(hp.logdir, str(epoch))
+    #     print(f"=========eval dev at epoch={epoch}=========")
+    #     metric_dev = eval(model, dev_iter, fname + '_dev')
+    #
+    #     print(f"=========eval test at epoch={epoch}=========")
+    #     metric_test = eval(model, test_iter, fname + '_test')
+    #
+    #     if hp.telegram_bot_token:
+    #         report_to_telegram('[epoch {}] dev\n{}'.format(epoch, metric_dev), hp.telegram_bot_token, hp.telegram_chat_id)
+    #         report_to_telegram('[epoch {}] test\n{}'.format(epoch, metric_test), hp.telegram_bot_token, hp.telegram_chat_id)
+    #
+    #     torch.save(model, "latest_model.pt")
+    #     # print(f"weights were saved to {fname}.pt")

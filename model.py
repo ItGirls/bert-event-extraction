@@ -1,19 +1,22 @@
+# -*-coding:utf-8 -*-
 import torch
 import torch.nn as nn
 from torch.nn import init
 import torch.nn.functional as F
 import numpy as np
 
-from pytorch_pretrained_bert import BertModel
+# from pytorch_pretrained_bert import BertModel
+from transformers import BertModel
 from data_load import idx2trigger, argument2idx
 from consts import NONE
 from utils import find_triggers
 
-
+# 额外使用了实体信息和词性信息
 class Net(nn.Module):
     def __init__(self, trigger_size=None, entity_size=None, all_postags=None, postag_embedding_dim=50, argument_size=None, entity_embedding_dim=50, device=torch.device("cpu")):
         super().__init__()
         self.bert = BertModel.from_pretrained('bert-base-cased')
+        # self.bert = BertModel.from_pretrained( '/home/zhutingting/PycharmProjects/Bert-BiLSTM-CRF-pytorch/bert-base-chinese')
         self.entity_embed = MultiLabelEmbeddingLayer(num_embeddings=entity_size, embedding_dim=entity_embedding_dim, device=device)
         self.postag_embed = nn.Embedding(num_embeddings=all_postags, embedding_dim=postag_embedding_dim)
         self.rnn = nn.LSTM(bidirectional=True, num_layers=1, input_size=768 + entity_embedding_dim, hidden_size=768 // 2, batch_first=True)
